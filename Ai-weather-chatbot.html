@@ -1,0 +1,2781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nimo - Weather AI Assistant</title>
+    <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.0/dist/dotlottie-wc.js" type="module"></script>
+    <style>
+        /* ===== RESET & BASE STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes pulse-glow {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.4);
+            }
+            50% {
+                transform: scale(1.03);
+                box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.5);
+            }
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+                max-height: 100px;
+                padding: 0 15px 15px;
+                margin-bottom: 0;
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+                max-height: 0;
+                padding: 0;
+                margin-bottom: 0;
+            }
+        }
+
+        @keyframes typingDots {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            30% {
+                transform: translateY(-8px);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes heatWave {
+            0%, 100% { 
+                transform: translateY(0); 
+                opacity: 0.8;
+            }
+            50% { 
+                transform: translateY(-2px); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* ===== CSS CUSTOM PROPERTIES (THEME SYSTEM) ===== */
+        :root {
+            --primary-color: #1e40af;
+            --secondary-color: #3b82f6;
+            --primary-rgb: 30, 64, 175;
+            --secondary-rgb: 59, 130, 246;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --warning-color: #ff9800;
+            --background-color: #fafafa;
+            --text-color: #333;
+            --light-text: #666;
+            --border-color: #eee;
+            --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 15px rgba(0, 0, 0, 0.15);
+            --shadow-heavy: 0 10px 40px rgba(0, 0, 0, 0.15);
+            --border-radius: 20px;
+            --border-radius-small: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        /* ===== API CONFIGURATION WARNING ===== */
+        .api-warning {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ff6b35, #f7941e);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+            z-index: 10001;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            animation: fadeIn 0.5s ease-in-out;
+            max-width: 90%;
+        }
+
+        .api-warning a {
+            color: white;
+            text-decoration: underline;
+        }
+
+        .api-warning .close-warning {
+            margin-left: 10px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        /* ===== WEATHER CARD STYLES ===== */
+        .weather-card {
+            border-radius: 18px;
+            color: #222;
+            padding: 20px;
+            margin: 12px 0;
+            width: 100%;
+            max-width: 280px;
+            font-family: inherit;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            animation: fadeIn 0.6s ease-in-out;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .weather-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            pointer-events: none;
+        }
+
+        /* Enhanced high temperature card effects */
+        .weather-card.weather-extreme-hot::before {
+            background: linear-gradient(
+                135deg, 
+                rgba(255, 255, 255, 0.2) 0%, 
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0.3) 100%
+            );
+            animation: heatWave 2s ease-in-out infinite;
+        }
+
+        .weather-card.weather-very-hot::before {
+            background: linear-gradient(
+                135deg, 
+                rgba(255, 255, 255, 0.15) 0%, 
+                rgba(255, 255, 255, 0.08) 100%
+            );
+        }
+
+        .weather-card-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .weather-top {
+            display: flex;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .weather-emoji {
+            font-size: 32px;
+            margin-right: 12px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        /* Enhanced emoji animations for hot weather */
+        .weather-extreme-hot .weather-emoji,
+        .weather-very-hot .weather-emoji {
+            animation: heatWave 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.6));
+        }
+
+        .weather-condition {
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .weather-temp {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 12px 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Enhanced temperature display for hot weather */
+        .weather-extreme-hot .weather-temp,
+        .weather-very-hot .weather-temp {
+            text-shadow: 
+                0 2px 4px rgba(0, 0, 0, 0.2),
+                0 0 20px rgba(255, 165, 0, 0.4);
+            font-weight: 900;
+        }
+
+        .weather-location {
+            font-size: 16px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .weather-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 12px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Enhanced details for hot weather */
+        .weather-extreme-hot .weather-details,
+        .weather-very-hot .weather-details {
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .weather-detail {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .weather-detail-icon {
+            font-size: 16px;
+        }
+
+        .weather-detail-label {
+            font-size: 11px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .weather-detail-value {
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        /* Weather condition backgrounds - Enhanced with high temperature variants */
+        .weather-sunny {
+            background: linear-gradient(135deg, #FFD54F, #FFB300);
+        }
+
+        .weather-very-hot {
+            background: linear-gradient(135deg, #FF8A65, #FF5722, #E65100);
+            color: white;
+            box-shadow: 0 8px 25px rgba(255, 87, 34, 0.4);
+        }
+
+        .weather-extreme-hot {
+            background: linear-gradient(135deg, #FF6B35, #F7931E, #FFD23F);
+            background-size: 200% 200%;
+            animation: shimmer 3s ease-in-out infinite;
+            color: #1a1a1a;
+            box-shadow: 
+                0 8px 25px rgba(255, 107, 53, 0.5),
+                0 0 50px rgba(255, 107, 53, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .weather-cloudy {
+            background: linear-gradient(135deg, #90A4AE, #B0BEC5);
+        }
+
+        .weather-rain {
+            background: linear-gradient(135deg, #4FC3F7, #29B6F6);
+        }
+
+        .weather-thunderstorm {
+            background: linear-gradient(135deg, #616161, #4527A0);
+            color: white;
+        }
+
+        .weather-snow {
+            background: linear-gradient(135deg, #E1F5FE, #B3E5FC);
+        }
+
+        .weather-fog {
+            background: linear-gradient(135deg, #CFD8DC, #ECEFF1);
+        }
+
+        .weather-default {
+            background: linear-gradient(135deg, #81C784, #66BB6A);
+        }
+
+        /* Hot weather warning badge */
+        .heat-warning {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #e65100;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            animation: pulse 2s infinite;
+            z-index: 2;
+        }
+
+        /* ===== LOCATION BUTTON ===== */
+        .location-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+            margin: 8px 0;
+            box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
+        }
+
+        .location-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4);
+        }
+
+        .location-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .location-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* ===== CHATBOT TOGGLE BUTTON (UPDATED FOR YOUR LOTTIE ANIMATION) ===== */
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            /* 🎯 ICON SIZE CUSTOMIZATION - Adjust these values to change the toggle button size */
+            width: 80px;   /* Change this value to make icon larger/smaller */
+            height: 80px;  /* Keep this same as width for circular shape */
+            background: transparent;  /* Transparent background as requested */
+            border: none;
+            cursor: pointer;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            filter: drop-shadow(0 8px 25px rgba(var(--primary-rgb), 0.3));
+        }
+
+        .chatbot-toggle:focus {
+            outline: 3px solid rgba(var(--primary-rgb), 0.5);
+            outline-offset: 3px;
+        }
+
+        .chatbot-toggle dotlottie-wc {
+            /* 🎯 LOTTIE ANIMATION SIZE - Keep these same as the button width/height above */
+            width: 80px !important;   /* Match button width */
+            height: 80px !important;  /* Match button height */
+            pointer-events: none;
+        }
+
+        /* ===== CHAT WIDGET CONTAINER ===== */
+        .chatbot-widget {
+            position: fixed;
+            bottom: 110px;
+            right: 20px;
+            width: 350px;
+            height: 470px;  /* 🎯 REDUCED from 600px for better desktop responsiveness */
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            z-index: 10000;
+            transform: scale(0) translateY(20px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chatbot-widget.open {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        /* ===== CHAT HEADER ===== */
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 20px;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .chat-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+            pointer-events: none;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bot-avatar.header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-glow 3s ease-in-out infinite;
+            border: 2px solid white;
+            overflow: hidden;
+            background-color: white;
+            transition: var(--transition);
+        }
+
+        .bot-avatar.header-avatar:hover {
+            animation: none;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .bot-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .header-info h3 {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .online-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success-color);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.failed {
+            background: var(--error-color);
+            animation: none;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            backdrop-filter: blur(5px);
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .close-btn:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.8);
+            outline-offset: 2px;
+        }
+
+        .close-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* ===== CHAT MESSAGES ===== */
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--background-color);
+            min-height: 0;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #b0b0b0;
+            border-radius: 3px;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 16px;
+            animation: messageSlide 0.3s ease-out;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin: 0 8px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: var(--shadow-light);
+        }
+
+        .bot-avatar.message-avatar {
+            background-color: #e9ecef;
+            border: 1px solid #d1d1d1;
+        }
+
+        .user-message-avatar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: 1px solid var(--primary-color);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .message-content {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message-content h1, .message-content h2, .message-content h3 {
+            margin: 8px 0 4px 0;
+            font-weight: 600;
+        }
+
+        .message-content h1 { font-size: 18px; }
+        .message-content h2 { font-size: 16px; }
+        .message-content h3 { font-size: 15px; }
+
+        .message-content p {
+            margin: 4px 0;
+        }
+
+        .message-content ul, .message-content ol {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .message-content li {
+            margin: 2px 0;
+        }
+
+        .message-content code {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .message-content pre {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .message-content blockquote {
+            border-left: 3px solid #ddd;
+            margin: 8px 0;
+            padding-left: 12px;
+            color: var(--light-text);
+        }
+
+        .bot-message .message-content {
+            background: #e9ecef;
+            color: var(--text-color);
+            border-bottom-left-radius: 6px;
+            box-shadow: var(--shadow-light);
+        }
+
+        .user-message {
+            justify-content: flex-end;
+        }
+
+        .user-message .message-content {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom-right-radius: 6px;
+            box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2);
+        }
+
+        /* ===== TYPING INDICATOR ===== */
+        .typing-indicator-message {
+            display: flex;
+            margin-bottom: 16px;
+            animation: messageSlide 0.3s ease-out;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #e9ecef;
+            color: var(--light-text);
+            border-radius: 18px;
+            border-bottom-left-radius: 6px;
+            box-shadow: var(--shadow-light);
+            max-width: 80px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typingDots 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        /* ===== QUICK REPLIES - UPDATED FOR HIDE FUNCTIONALITY ===== */
+        .quick-replies {
+            padding: 0 15px 15px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            min-height: 40px;
+            background: var(--background-color);
+            animation: fadeInUp 0.3s ease-out;
+            overflow: hidden;
+            transition: all 0.4s ease-out;
+        }
+
+        .quick-replies.hiding {
+            animation: fadeOut 0.4s ease-out forwards;
+        }
+
+        .quick-replies.hidden {
+            display: none !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+        }
+
+        .quick-reply-btn {
+            background: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .quick-reply-btn:hover, .quick-reply-btn:focus {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2);
+            outline: none;
+        }
+
+        .quick-reply-btn.location-style {
+            border-color: var(--success-color);
+            color: var(--success-color);
+        }
+
+        .quick-reply-btn.location-style:hover, .quick-reply-btn.location-style:focus {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .quick-reply-btn.close-style {
+            border-color: var(--error-color);
+            color: var(--error-color);
+        }
+
+        .quick-reply-btn.close-style:hover, .quick-reply-btn.close-style:focus {
+            background: var(--error-color);
+            color: white;
+        }
+
+        /* ===== CHAT INPUT ===== */
+        .chat-input {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            border-radius: 25px;
+            padding: 6px 12px;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .input-container:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+        }
+
+        .attachment-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            color: #B0B0B0;
+            border-radius: 50%;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+
+        .attachment-btn:hover {
+            background-color: #f0f0f0;
+            color: #888;
+            transform: scale(1.1);
+        }
+
+        .attachment-btn:focus {
+            outline: 2px solid #B0B0B0;
+            outline-offset: 2px;
+        }
+
+        .attachment-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .message-input {
+            flex: 1;
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 14px;
+            padding: 8px 0;
+        }
+
+        .message-input::placeholder {
+            color: #999;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .send-btn:hover, .send-btn:focus {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
+            outline: none;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .send-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
+        /* ===== ERROR MESSAGE ===== */
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+            padding: 10px 15px;
+            border-radius: var(--border-radius-small);
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .error-message svg {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            fill: #c62828;
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 480px) {
+            .chatbot-widget {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                height: 70vh;
+                max-height: 500px;
+                border-radius: 15px;
+            }
+
+            .chatbot-toggle {
+                bottom: 15px;
+                right: 15px;
+                /* 🎯 MOBILE ICON SIZE - Adjust these for mobile responsiveness */
+                width: 70px;   /* Smaller on mobile */
+                height: 70px;  /* Keep same as width */
+            }
+
+            .chatbot-toggle dotlottie-wc {
+                /* 🎯 MOBILE LOTTIE SIZE - Match the mobile button size above */
+                width: 70px !important;   /* Match mobile button width */
+                height: 70px !important;  /* Match mobile button height */
+            }
+
+            .chat-header {
+                padding: 15px;
+            }
+
+            .header-info h3 {
+                font-size: 16px;
+            }
+
+            .chat-input {
+                padding: 10px 15px;
+            }
+
+            .weather-card {
+                max-width: 100%;
+            }
+
+            .api-warning {
+                top: 10px;
+                font-size: 12px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- API Configuration Warning -->
+    <div id="api-warning" class="api-warning" style="display: none;">
+        🔧 API keys not configured. See <a href="https://github.com/yourusername/nimo-weather-bot" target="_blank">README</a> for setup instructions.
+        <button class="close-warning" onclick="document.getElementById('api-warning').style.display='none'">×</button>
+    </div>
+
+    <!-- Chat Toggle Button with YOUR SPECIFIED Lottie Animation -->
+    <button id="chatbot-toggle" class="chatbot-toggle" aria-label="Open weather chat">
+        <dotlottie-wc 
+            src="https://lottie.host/83327121-12ee-45f9-bc76-03921cffea81/AcjvW7a79t.lottie" 
+            style="width: 80px; height: 80px;" 
+            speed="1" 
+            autoplay 
+            loop>
+        </dotlottie-wc>
+    </button>
+
+    <!-- Chat Widget -->
+    <div id="chatbot-widget" class="chatbot-widget" role="dialog" aria-labelledby="chat-title" aria-modal="true" tabindex="-1">
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="bot-avatar header-avatar">
+                        <img id="header-bot-avatar" src="" alt="" aria-hidden="true">
+                    </div>
+                    <div class="header-info">
+                        <h3 id="chat-title">Nimo - Weather Assistant</h3>
+                        <div class="online-status">
+                            <div class="status-dot" id="status-dot" aria-hidden="true"></div>
+                            <span class="sr-only" id="status-text">Online</span>
+                            <span id="status-message">Online</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="close-btn" id="close-chat" aria-label="Close weather chat">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chat-messages" aria-live="polite" aria-atomic="true">
+            <!-- Messages will be appended here -->
+        </div>
+
+        <!-- Quick Reply Buttons -->
+        <div class="quick-replies" id="quick-replies">
+            <!-- Quick replies will be appended here -->
+        </div>
+
+        <!-- Chat Input -->
+        <div class="chat-input">
+            <div class="input-container">
+                <button class="attachment-btn" id="location-btn" aria-label="Use my location">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                </button>
+                <input type="text" id="message-input" class="message-input" placeholder="Ask about weather in any city..." aria-label="Type your weather question">
+                <button class="send-btn" id="send-btn" aria-label="Send message">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 🔧 WEATHER API CONFIGURATION
+         * 
+         * TO USE THIS CHATBOT:
+         * 1. Get a free API key from OpenWeatherMap: https://openweathermap.org/api
+         * 2. Get an API key from OpenRouter: https://openrouter.ai/
+         * 3. Replace the placeholder values below with your actual API keys
+         */
+        const WEATHER_CONFIG = {
+            // 🌤️ OpenWeather API - Get your free key at: https://openweathermap.org/api
+            OPENWEATHER_API_KEY: 'YOUR_OPENWEATHER_API_KEY_HERE',
+            
+            // 🤖 OpenRouter API - Get your key at: https://openrouter.ai/
+            OPENROUTER_API_KEY: 'YOUR_OPENROUTER_API_KEY_HERE',
+            
+            // API endpoints (don't change these)
+            GEOCODING_URL: 'https://api.openweathermap.org/geo/1.0/direct',
+            WEATHER_URL: 'https://api.openweathermap.org/data/2.5/weather',
+            OPENROUTER_URL: 'https://openrouter.ai/api/v1/chat/completions',
+            
+            // AI model (you can change this to other models available on OpenRouter)
+            MODEL: 'mistralai/mistral-7b-instruct:free'
+        };
+
+        /**
+         * Enhanced Country to Capital mapping
+         */
+        const COUNTRY_CAPITALS = {
+            'afghanistan': 'Kabul',
+            'albania': 'Tirana',
+            'algeria': 'Algiers',
+            'andorra': 'Andorra la Vella',
+            'angola': 'Luanda',
+            'argentina': 'Buenos Aires',
+            'armenia': 'Yerevan',
+            'australia': 'Canberra',
+            'austria': 'Vienna',
+            'azerbaijan': 'Baku',
+            'bahrain': 'Manama',
+            'bangladesh': 'Dhaka',
+            'belarus': 'Minsk',
+            'belgium': 'Brussels',
+            'bolivia': 'La Paz',
+            'brazil': 'Brasília',
+            'bulgaria': 'Sofia',
+            'canada': 'Ottawa',
+            'chile': 'Santiago',
+            'china': 'Beijing',
+            'colombia': 'Bogotá',
+            'croatia': 'Zagreb',
+            'cuba': 'Havana',
+            'czech republic': 'Prague',
+            'czechia': 'Prague',
+            'denmark': 'Copenhagen',
+            'egypt': 'Cairo',
+            'finland': 'Helsinki',
+            'france': 'Paris',
+            'germany': 'Berlin',
+            'ghana': 'Accra',
+            'greece': 'Athens',
+            'hungary': 'Budapest',
+            'iceland': 'Reykjavik',
+            'india': 'New Delhi',
+            'indonesia': 'Jakarta',
+            'iran': 'Tehran',
+            'iraq': 'Baghdad',
+            'ireland': 'Dublin',
+            'israel': 'Jerusalem',
+            'italy': 'Rome',
+            'japan': 'Tokyo',
+            'kazakhstan': 'Nur-Sultan',
+            'kenya': 'Nairobi',
+            'kuwait': 'Kuwait City',
+            'libya': 'Tripoli',
+            'malaysia': 'Kuala Lumpur',
+            'mexico': 'Mexico City',
+            'morocco': 'Rabat',
+            'netherlands': 'Amsterdam',
+            'new zealand': 'Wellington',
+            'nigeria': 'Abuja',
+            'norway': 'Oslo',
+            'pakistan': 'Islamabad',
+            'peru': 'Lima',
+            'philippines': 'Manila',
+            'poland': 'Warsaw',
+            'portugal': 'Lisbon',
+            'romania': 'Bucharest',
+            'russia': 'Moscow',
+            'saudi arabia': 'Riyadh',
+            'serbia': 'Belgrade',
+            'singapore': 'Singapore',
+            'south africa': 'Cape Town',
+            'south korea': 'Seoul',
+            'spain': 'Madrid',
+            'sri lanka': 'Colombo',
+            'sudan': 'Khartoum',
+            'sweden': 'Stockholm',
+            'switzerland': 'Bern',
+            'syria': 'Damascus',
+            'thailand': 'Bangkok',
+            'turkey': 'Ankara',
+            'ukraine': 'Kyiv',
+            'united arab emirates': 'Abu Dhabi',
+            'uae': 'Abu Dhabi',
+            'united kingdom': 'London',
+            'uk': 'London',
+            'england': 'London',
+            'scotland': 'Edinburgh',
+            'wales': 'Cardiff',
+            'united states': 'Washington D.C.',
+            'usa': 'Washington D.C.',
+            'america': 'Washington D.C.',
+            'venezuela': 'Caracas',
+            'vietnam': 'Hanoi',
+            'sudan': 'khartoum',
+            'yemen': 'Sana\'a'
+        };
+
+        /**
+         * Enhanced Weather condition mapping with emojis and temperature-based classifications
+         */
+        const WEATHER_CONDITIONS = {
+            // Clear sky
+            '01d': { emoji: '☀️', class: 'weather-sunny', name: 'Clear Sky' },
+            '01n': { emoji: '🌙', class: 'weather-default', name: 'Clear Night' },
+            
+            // Few clouds
+            '02d': { emoji: '⛅', class: 'weather-default', name: 'Partly Cloudy' },
+            '02n': { emoji: '☁️', class: 'weather-cloudy', name: 'Partly Cloudy Night' },
+            
+            // Scattered/broken clouds
+            '03d': { emoji: '☁️', class: 'weather-cloudy', name: 'Cloudy' },
+            '03n': { emoji: '☁️', class: 'weather-cloudy', name: 'Cloudy Night' },
+            '04d': { emoji: '☁️', class: 'weather-cloudy', name: 'Overcast' },
+            '04n': { emoji: '☁️', class: 'weather-cloudy', name: 'Overcast Night' },
+            
+            // Shower rain
+            '09d': { emoji: '🌦️', class: 'weather-rain', name: 'Light Rain' },
+            '09n': { emoji: '🌧️', class: 'weather-rain', name: 'Light Rain' },
+            
+            // Rain
+            '10d': { emoji: '🌧️', class: 'weather-rain', name: 'Rain' },
+            '10n': { emoji: '🌧️', class: 'weather-rain', name: 'Rain' },
+            
+            // Thunderstorm
+            '11d': { emoji: '⛈️', class: 'weather-thunderstorm', name: 'Thunderstorm' },
+            '11n': { emoji: '⛈️', class: 'weather-thunderstorm', name: 'Thunderstorm' },
+            
+            // Snow
+            '13d': { emoji: '❄️', class: 'weather-snow', name: 'Snow' },
+            '13n': { emoji: '🌨️', class: 'weather-snow', name: 'Snow' },
+            
+            // Mist/fog
+            '50d': { emoji: '🌫️', class: 'weather-fog', name: 'Mist' },
+            '50n': { emoji: '🌫️', class: 'weather-fog', name: 'Mist' }
+        };
+
+        /**
+         * Enhanced Weather Emoji Manager for text messages
+         */
+        class WeatherEmojiManager {
+            static getTemperatureEmoji(temp) {
+                if (temp >= 40) return '🔥';
+                if (temp >= 35) return '🥵';
+                if (temp >= 30) return '☀️';
+                if (temp >= 25) return '🌤️';
+                if (temp >= 20) return '⛅';
+                if (temp >= 15) return '🌥️';
+                if (temp >= 10) return '☁️';
+                if (temp >= 5) return '🧥';
+                if (temp >= 0) return '🧣';
+                return '🥶';
+            }
+            
+            static getConditionEmoji(condition) {
+                const lowerCondition = condition.toLowerCase();
+                
+                if (lowerCondition.includes('clear') || lowerCondition.includes('sunny')) return '☀️';
+                if (lowerCondition.includes('partly cloudy')) return '⛅';
+                if (lowerCondition.includes('cloudy') || lowerCondition.includes('overcast')) return '☁️';
+                if (lowerCondition.includes('rain') || lowerCondition.includes('drizzle')) return '🌧️';
+                if (lowerCondition.includes('thunderstorm') || lowerCondition.includes('storm')) return '⛈️';
+                if (lowerCondition.includes('snow') || lowerCondition.includes('blizzard')) return '❄️';
+                if (lowerCondition.includes('mist') || lowerCondition.includes('fog')) return '🌫️';
+                if (lowerCondition.includes('wind')) return '🌬️';
+                if (lowerCondition.includes('hail')) return '🧊';
+                
+                return '🌡️';
+            }
+            
+            static getHumidityEmoji(humidity) {
+                if (humidity >= 80) return '💧';
+                if (humidity >= 60) return '💦';
+                if (humidity >= 40) return '🌊';
+                return '🏜️';
+            }
+            
+            static getWindEmoji(windSpeed) {
+                if (windSpeed >= 15) return '💨';
+                if (windSpeed >= 10) return '🌬️';
+                if (windSpeed >= 5) return '🍃';
+                return '🌾';
+            }
+            
+            static getActivityEmoji(temp, condition) {
+                const lowerCondition = condition.toLowerCase();
+                
+                if (temp >= 35) return '🏠'; // Stay indoors
+                if (temp >= 30 && !lowerCondition.includes('rain')) return '🏖️'; // Beach weather
+                if (temp >= 25 && !lowerCondition.includes('rain')) return '🚴'; // Good for activities
+                if (lowerCondition.includes('rain')) return '☔';
+                if (lowerCondition.includes('snow')) return '⛷️';
+                if (temp <= 5) return '🧥'; // Warm clothes needed
+                
+                return '🚶'; // Good for walking
+            }
+        }
+
+        /**
+         * Simple Markdown Parser for formatting bot messages with weather emojis
+         */
+        class MarkdownParser {
+            static parse(text) {
+                if (!text) return '';
+                
+                text = this.sanitizeHTML(text);
+                
+                return text
+                    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    .replace(/_(.*?)_/g, '<em>$1</em>')
+                    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+                    .replace(/^\* (.*$)/gim, '<li>$1</li>')
+                    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+                    .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
+                    .replace(/\n\n/g, '</p><p>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/^(?!<[h|u|o|p|b])/gm, '<p>')
+                    .replace(/(?<!>)$/gm, '</p>')
+                    .replace(/<p><\/p>/g, '')
+                    .replace(/<p>(<[h|u|o|b])/g, '$1')
+                    .replace(/(<\/[h|u|o|b][^>]*>)<\/p>/g, '$1');
+            }
+            
+            static sanitizeHTML(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        /**
+         * Enhanced Weather API Service with high temperature detection
+         */
+        class WeatherService {
+            /**
+             * Check if API keys are configured
+             */
+            static checkAPIConfiguration() {
+                const hasOpenWeatherKey = WEATHER_CONFIG.OPENWEATHER_API_KEY && 
+                    WEATHER_CONFIG.OPENWEATHER_API_KEY !== 'YOUR_OPENWEATHER_API_KEY_HERE';
+                
+                const hasOpenRouterKey = WEATHER_CONFIG.OPENROUTER_API_KEY && 
+                    WEATHER_CONFIG.OPENROUTER_API_KEY !== 'YOUR_OPENROUTER_API_KEY_HERE';
+                
+                return {
+                    hasOpenWeatherKey,
+                    hasOpenRouterKey,
+                    isFullyConfigured: hasOpenWeatherKey && hasOpenRouterKey
+                };
+            }
+
+            /**
+             * Enhanced geocoding with multiple fallback strategies
+             */
+            static async geocodeLocation(query) {
+                const config = this.checkAPIConfiguration();
+                if (!config.hasOpenWeatherKey) {
+                    throw new Error('OpenWeather API key is not configured. Please add your API key to use weather features.');
+                }
+
+                const originalQuery = query.trim();
+                let attempts = [];
+                
+                // Strategy 1: Try original query
+                attempts.push(originalQuery);
+                
+                // Strategy 2: Check if it's a country name and use capital
+                const lowercaseQuery = originalQuery.toLowerCase();
+                if (COUNTRY_CAPITALS[lowercaseQuery]) {
+                    attempts.push(COUNTRY_CAPITALS[lowercaseQuery]);
+                }
+                
+                // Strategy 3: Try variations (removing common words)
+                const cleanedQuery = originalQuery
+                    .replace(/\b(city|weather|temperature)\b/gi, '')
+                    .trim();
+                if (cleanedQuery && cleanedQuery !== originalQuery) {
+                    attempts.push(cleanedQuery);
+                }
+                
+                // Strategy 4: Try first word only (for "New York City" -> "New York")
+                const firstTwoWords = originalQuery.split(' ').slice(0, 2).join(' ');
+                if (firstTwoWords !== originalQuery) {
+                    attempts.push(firstTwoWords);
+                }
+                
+                let lastError = null;
+                
+                for (const attempt of attempts) {
+                    if (!attempt) continue;
+                    
+                    try {
+                        console.log(`Geocoding attempt: "${attempt}"`);
+                        
+                        const url = `${WEATHER_CONFIG.GEOCODING_URL}?q=${encodeURIComponent(attempt)}&limit=5&appid=${WEATHER_CONFIG.OPENWEATHER_API_KEY}`;
+                        const response = await fetch(url);
+                        
+                        if (!response.ok) {
+                            if (response.status === 401) {
+                                throw new Error('Invalid OpenWeather API key. Please check your API key configuration.');
+                            } else if (response.status === 429) {
+                                throw new Error('OpenWeather API rate limit exceeded. Please try again later.');
+                            }
+                            throw new Error(`Geocoding failed: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data && Array.isArray(data) && data.length > 0) {
+                            // Prefer exact matches or locations without state (usually capitals/major cities)
+                            const exactMatch = data.find(loc => 
+                                loc.name.toLowerCase() === attempt.toLowerCase()
+                            );
+                            
+                            const capitalMatch = data.find(loc => !loc.state);
+                            const match = exactMatch || capitalMatch || data[0];
+                            
+                            console.log(`Geocoding successful: ${match.name}, ${match.country}`);
+                            
+                            return {
+                                name: match.name,
+                                country: match.country,
+                                state: match.state,
+                                lat: match.lat,
+                                lon: match.lon
+                            };
+                        }
+                    } catch (error) {
+                        console.log(`Geocoding attempt "${attempt}" failed:`, error.message);
+                        lastError = error;
+                    }
+                }
+                
+                // If all attempts failed, throw the last error or a generic one
+                throw lastError || new Error(`Location "${originalQuery}" not found`);
+            }
+
+            /**
+             * Enhanced weather data fetching with better error handling
+             */
+            static async getWeather(lat, lon) {
+                const config = this.checkAPIConfiguration();
+                if (!config.hasOpenWeatherKey) {
+                    throw new Error('OpenWeather API key is not configured. Please add your API key to use weather features.');
+                }
+
+                try {
+                    const url = `${WEATHER_CONFIG.WEATHER_URL}?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_CONFIG.OPENWEATHER_API_KEY}`;
+                    
+                    console.log('Fetching weather data...');
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            throw new Error('Invalid OpenWeather API key. Please check your API key configuration.');
+                        } else if (response.status === 429) {
+                            throw new Error('OpenWeather API rate limit exceeded. Please try again later.');
+                        } else if (response.status === 404) {
+                            throw new Error('Weather data not available for this location');
+                        }
+                        throw new Error(`Weather API failed: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Validate essential data structure
+                    if (!data || !data.main || !data.weather || !Array.isArray(data.weather) || data.weather.length === 0) {
+                        throw new Error('Invalid weather data received');
+                    }
+                    
+                    console.log('Weather data received successfully');
+                    return data;
+                } catch (error) {
+                    console.error('Weather API error:', error);
+                    throw error;
+                }
+            }
+
+            /**
+             * Enhanced user location with better error handling
+             */
+            static async getUserLocation() {
+                return new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) {
+                        reject(new Error('Geolocation not supported by this browser'));
+                        return;
+                    }
+                    
+                    const options = {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 300000 // 5 minutes
+                    };
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        position => {
+                            console.log('User location obtained');
+                            resolve({
+                                lat: position.coords.latitude,
+                                lon: position.coords.longitude
+                            });
+                        },
+                        error => {
+                            console.error('Geolocation error:', error);
+                            let errorMessage = 'Location access denied';
+                            
+                            switch(error.code) {
+                                case error.PERMISSION_DENIED:
+                                    errorMessage = 'Location access denied by user';
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    errorMessage = 'Location information unavailable';
+                                    break;
+                                case error.TIMEOUT:
+                                    errorMessage = 'Location request timed out';
+                                    break;
+                            }
+                            
+                            reject(new Error(errorMessage));
+                        },
+                        options
+                    );
+                });
+            }
+
+            /**
+             * Enhanced weather card creation with high temperature detection
+             */
+            static createWeatherCard(weatherData, locationInfo) {
+                try {
+                    const main = weatherData.main || {};
+                    const weather = weatherData.weather?.[0] || {};
+                    const wind = weatherData.wind || {};
+                    
+                    // Get temperature and determine heat level
+                    const temperature = main.temp !== undefined ? Math.round(main.temp) : '--';
+                    const heatLevel = this.determineHeatLevel(temperature);
+                    
+                    // Get weather condition info with fallback
+                    let condition = WEATHER_CONDITIONS[weather.icon] || {
+                        emoji: this.getEmojiFromDescription(weather.description || weather.main || ''),
+                        class: 'weather-default',
+                        name: weather.description || weather.main || 'Unknown'
+                    };
+                    
+                    // Override condition class for high temperatures
+                    if (heatLevel.class) {
+                        condition.class = heatLevel.class;
+                    }
+                    
+                    // Format location text
+                    const locationText = this.formatLocationText(locationInfo);
+                    
+                    // Ensure other values are valid
+                    const humidity = main.humidity !== undefined ? main.humidity : '--';
+                    const pressure = main.pressure !== undefined ? main.pressure : '--';
+                    const windSpeed = wind.speed !== undefined ? Math.round(wind.speed) : '--';
+                    
+                    // Create heat warning if needed
+                    const heatWarning = heatLevel.warning ? `<div class="heat-warning">${heatLevel.warning}</div>` : '';
+                    
+                    return `
+                        <div class="weather-card ${condition.class}">
+                            ${heatWarning}
+                            <div class="weather-card-content">
+                                <div class="weather-top">
+                                    <span class="weather-emoji">${condition.emoji}</span>
+                                    <span class="weather-condition">${condition.name}</span>
+                                </div>
+                                <div class="weather-temp">${temperature}°C</div>
+                                <div class="weather-location">${locationText}</div>
+                                <div class="weather-details">
+                                    <div class="weather-detail">
+                                        <div class="weather-detail-icon">🌬️</div>
+                                        <div class="weather-detail-label">Wind</div>
+                                        <div class="weather-detail-value">${windSpeed} m/s</div>
+                                    </div>
+                                    <div class="weather-detail">
+                                        <div class="weather-detail-icon">💧</div>
+                                        <div class="weather-detail-label">Humidity</div>
+                                        <div class="weather-detail-value">${humidity}%</div>
+                                    </div>
+                                    <div class="weather-detail">
+                                        <div class="weather-detail-icon">⚖️</div>
+                                        <div class="weather-detail-label">Pressure</div>
+                                        <div class="weather-detail-value">${pressure} hPa</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('Error creating weather card:', error);
+                    return `
+                        <div class="weather-card weather-default">
+                            <div class="weather-card-content">
+                                <div class="weather-top">
+                                    <span class="weather-emoji">🌡️</span>
+                                    <span class="weather-condition">Weather Data</span>
+                                </div>
+                                <div class="weather-temp">--°C</div>
+                                <div class="weather-location">${this.formatLocationText(locationInfo)}</div>
+                                <div style="text-align: center; margin-top: 16px; color: rgba(0,0,0,0.6);">
+                                    Weather information unavailable
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            /**
+             * Determine heat level and appropriate styling
+             */
+            static determineHeatLevel(temperature) {
+                if (typeof temperature !== 'number') {
+                    return { class: null, warning: null };
+                }
+                
+                if (temperature >= 40) {
+                    return { 
+                        class: 'weather-extreme-hot', 
+                        warning: 'EXTREME HEAT' 
+                    };
+                } else if (temperature >= 35) {
+                    return { 
+                        class: 'weather-very-hot', 
+                        warning: 'VERY HOT' 
+                    };
+                } else if (temperature >= 30) {
+                    return { 
+                        class: 'weather-very-hot', 
+                        warning: null 
+                    };
+                }
+                
+                return { class: null, warning: null };
+            }
+
+            /**
+             * Get emoji from weather description as fallback
+             */
+            static getEmojiFromDescription(description) {
+                const desc = description.toLowerCase();
+                if (desc.includes('clear') || desc.includes('sunny')) return '☀️';
+                if (desc.includes('cloud')) return '☁️';
+                if (desc.includes('rain') || desc.includes('drizzle')) return '🌧️';
+                if (desc.includes('thunderstorm') || desc.includes('storm')) return '⛈️';
+                if (desc.includes('snow')) return '❄️';
+                if (desc.includes('mist') || desc.includes('fog')) return '🌫️';
+                if (desc.includes('wind')) return '🌬️';
+                return '🌤️';
+            }
+
+            /**
+             * Format location text consistently
+             */
+            static formatLocationText(locationInfo) {
+                if (!locationInfo) return 'Unknown Location';
+                
+                const parts = [locationInfo.name];
+                if (locationInfo.state) parts.push(locationInfo.state);
+                if (locationInfo.country) parts.push(locationInfo.country);
+                
+                return parts.filter(Boolean).join(', ');
+            }
+        }
+
+        /**
+         * Enhanced ChatBot Class with improved weather integration and markdown formatting
+         */
+        class NimoWeatherBot {
+            constructor() {
+                this.state = {
+                    isOpen: false,
+                    isTyping: false,
+                    conversationMemory: [],
+                    maxMemorySize: 10,
+                    lastWeatherData: null,
+                    lastLocationInfo: null,
+                    requestCounter: 0,
+                    isFirstInteraction: true, // Track if this is the first user interaction
+                    quickRepliesDisabled: false // Track if quick replies should be permanently disabled
+                };
+                
+                this.elements = this.initializeElements();
+                this.checkAndShowAPIWarning();
+                this.setupEventListeners();
+                this.showInitialMessage();
+                this.updateConnectionStatus('online');
+            }
+
+            /**
+             * Check API configuration and show warning if needed
+             */
+            checkAndShowAPIWarning() {
+                const config = WeatherService.checkAPIConfiguration();
+                if (!config.isFullyConfigured) {
+                    const warningElement = document.getElementById('api-warning');
+                    if (warningElement) {
+                        warningElement.style.display = 'block';
+                    }
+                }
+            }
+
+            /**
+             * Initialize DOM elements
+             */
+            initializeElements() {
+                return {
+                    toggle: document.getElementById('chatbot-toggle'),
+                    widget: document.getElementById('chatbot-widget'),
+                    closeBtn: document.getElementById('close-chat'),
+                    messageInput: document.getElementById('message-input'),
+                    sendBtn: document.getElementById('send-btn'),
+                    messagesContainer: document.getElementById('chat-messages'),
+                    quickRepliesContainer: document.getElementById('quick-replies'),
+                    locationBtn: document.getElementById('location-btn'),
+                    headerTitle: document.getElementById('chat-title'),
+                    headerAvatar: document.getElementById('header-bot-avatar'),
+                    statusDot: document.getElementById('status-dot'),
+                    statusText: document.getElementById('status-text'),
+                    statusMessage: document.getElementById('status-message')
+                };
+            }
+
+            /**
+             * Setup all event listeners
+             */
+            setupEventListeners() {
+                // Toggle chat
+                this.elements.toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleChat();
+                });
+
+                // Close chat
+                this.elements.closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.closeChat();
+                });
+
+                // Send message
+                this.elements.sendBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.sendMessage();
+                });
+
+                // Enter key to send
+                this.elements.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Location button
+                this.elements.locationBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleLocationRequest();
+                });
+
+                // Quick replies
+                this.elements.quickRepliesContainer.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (e.target.classList.contains('quick-reply-btn')) {
+                        this.handleQuickReply(e.target);
+                    }
+                });
+
+                // Prevent widget clicks from closing chat
+                this.elements.widget.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+
+                // Escape key to close
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.state.isOpen) {
+                        this.closeChat();
+                    }
+                });
+
+                // Set up bot avatar
+                this.setupBotAvatar();
+            }
+
+            /**
+             * Setup bot avatar with fallback
+             */
+            setupBotAvatar() {
+                const avatarUrl = 'https://cdn-icons-png.flaticon.com/256/6420/6420958.png';
+                this.elements.headerAvatar.src = avatarUrl;
+                this.elements.headerAvatar.alt = 'Nimo Weather Assistant';
+                this.elements.headerAvatar.onerror = () => {
+                    this.elements.headerAvatar.style.display = 'none';
+                    this.elements.headerAvatar.parentElement.innerHTML = '🌤️';
+                    this.elements.headerAvatar.parentElement.style.fontSize = '24px';
+                };
+            }
+
+            /**
+             * Handle quick reply button clicks
+             */
+            handleQuickReply(button) {
+                const message = button.dataset.message || button.textContent;
+                
+                if (button.classList.contains('close-style') || 
+                    message.toLowerCase().includes('close') || 
+                    message.toLowerCase().includes('end')) {
+                    this.closeChat();
+                    return;
+                }
+                
+                if (button.classList.contains('location-style') || 
+                    message.toLowerCase().includes('location')) {
+                    this.handleFirstInteraction(); // Handle first interaction before location request
+                    this.handleLocationRequest();
+                    return;
+                }
+                
+                if (message.trim()) {
+                    this.addMessage(message.trim(), 'user');
+                    this.processUserMessage(message.trim());
+                    this.handleFirstInteraction(); // Handle first interaction
+                    this.elements.messageInput.focus();
+                }
+            }
+
+            /**
+             * Handle first user interaction - hide quick replies permanently
+             */
+            handleFirstInteraction() {
+                if (this.state.isFirstInteraction) {
+                    this.state.isFirstInteraction = false;
+                    this.state.quickRepliesDisabled = true; // Disable all future quick replies
+                    this.hideQuickRepliesPermanently();
+                }
+            }
+
+            /**
+             * Hide quick replies permanently with smooth animation
+             */
+            hideQuickRepliesPermanently() {
+                const quickRepliesContainer = this.elements.quickRepliesContainer;
+                if (quickRepliesContainer && !quickRepliesContainer.classList.contains('hidden')) {
+                    // Add hiding class for animation
+                    quickRepliesContainer.classList.add('hiding');
+                    
+                    // After animation completes, add hidden class and remove content
+                    setTimeout(() => {
+                        quickRepliesContainer.classList.add('hidden');
+                        quickRepliesContainer.classList.remove('hiding');
+                        quickRepliesContainer.innerHTML = '';
+                    }, 400); // Match the fadeOut animation duration
+                }
+            }
+
+            /**
+             * Toggle chat open/close state
+             */
+            toggleChat() {
+                if (this.state.isOpen) {
+                    this.closeChat();
+                } else {
+                    this.openChat();
+                }
+            }
+
+            /**
+             * Open the chat widget
+             */
+            openChat() {
+                this.elements.widget.classList.add('open');
+                this.elements.toggle.setAttribute('aria-label', 'Close weather chat');
+                this.elements.widget.setAttribute('aria-hidden', 'false');
+                this.state.isOpen = true;
+                
+                setTimeout(() => {
+                    this.elements.messageInput.focus();
+                    this.scrollToBottom();
+                }, 350);
+            }
+
+            /**
+             * Close the chat widget
+             */
+            closeChat() {
+                this.elements.widget.classList.remove('open');
+                this.elements.toggle.setAttribute('aria-label', 'Open weather chat');
+                this.elements.widget.setAttribute('aria-hidden', 'true');
+                this.elements.toggle.focus();
+                this.state.isOpen = false;
+            }
+
+            /**
+             * Send user message
+             */
+            async sendMessage() {
+                const message = this.elements.messageInput.value.trim();
+                if (message && !this.state.isTyping) {
+                    this.addMessage(message, 'user');
+                    this.elements.messageInput.value = '';
+                    this.handleFirstInteraction(); // Handle first interaction
+                    this.elements.sendBtn.disabled = true;
+                    
+                    await this.processUserMessage(message);
+                    
+                    this.elements.sendBtn.disabled = false;
+                }
+            }
+
+            /**
+             * Enhanced message processing with better weather detection
+             */
+            async processUserMessage(message) {
+                try {
+                    this.state.requestCounter++;
+                    this.updateConnectionStatus('online');
+                    this.showTypingIndicator();
+                    
+                    // Check if this is a weather-related query
+                    if (this.isWeatherQuery(message)) {
+                        await this.handleWeatherRequest(message);
+                    } else {
+                        // Handle as general chat
+                        const config = WeatherService.checkAPIConfiguration();
+                        if (config.hasOpenRouterKey) {
+                            const botResponse = await this.callChatAPI(message);
+                            this.addMessage(botResponse, 'bot');
+                        } else {
+                            this.addMessage("🤖 Chat features require an OpenRouter API key. Weather features are still available if you have an OpenWeather API key configured. Please check the setup instructions.", 'bot');
+                        }
+                    }
+                    
+                } catch (error) {
+                    this.handleError(error);
+                } finally {
+                    this.hideTypingIndicator();
+                }
+            }
+
+            /**
+             * Enhanced weather query detection
+             */
+            isWeatherQuery(message) {
+                const weatherKeywords = [
+                    'weather', 'temperature', 'temp', 'rain', 'sunny', 'cloudy', 'storm', 'snow',
+                    'forecast', 'hot', 'cold', 'warm', 'cool', 'humid', 'wind', 'climate', 
+                    'degrees', 'celsius', 'fahrenheit', 'precipitation', 'humidity', 'pressure',
+                    'conditions', 'raining', 'snowing', 'thunderstorm', 'drizzle', 'overcast',
+                    'partly cloudy', 'clear sky', 'fog', 'mist', 'freezing', 'hail'
+                ];
+                
+                const lowerMessage = message.toLowerCase();
+                
+                // Check for weather keywords
+                const hasWeatherKeyword = weatherKeywords.some(keyword => lowerMessage.includes(keyword));
+                
+                // Check for location patterns
+                const hasLocationPattern = this.extractLocationFromMessage(message) !== null;
+                
+                // Check for country names
+                const hasCountryName = Object.keys(COUNTRY_CAPITALS).some(country => 
+                    lowerMessage.includes(country)
+                );
+                
+                // Check for weather-related questions
+                const weatherQuestions = [
+                    'how is the weather',
+                    'what\'s the weather like',
+                    'is it raining',
+                    'is it sunny',
+                    'temperature in',
+                    'weather in',
+                    'weather for'
+                ];
+                
+                const hasWeatherQuestion = weatherQuestions.some(q => lowerMessage.includes(q));
+                
+                return hasWeatherKeyword || hasLocationPattern || hasCountryName || hasWeatherQuestion;
+            }
+
+            /**
+             * Enhanced location extraction with multiple patterns
+             */
+            extractLocationFromMessage(message) {
+                // Enhanced location extraction patterns
+                const patterns = [
+                    // Direct weather queries
+                    /weather\s+(?:in|for|at)\s+(.+?)(?:\?|!|$)/i,
+                    /(?:what's|whats|what is)\s+(?:the\s+)?weather\s+(?:like\s+)?(?:in|at|for)\s+(.+?)(?:\?|!|$)/i,
+                    /temperature\s+(?:in|for|at)\s+(.+?)(?:\?|!|$)/i,
+                    /(?:how\s+)?(?:is\s+)?(?:the\s+)?weather\s+(?:like\s+)?(?:in|at|for)\s+(.+?)(?:\?|!|$)/i,
+                    
+                    // Reverse patterns
+                    /(.+?)\s+weather(?:\?|!|$)/i,
+                    /(.+?)\s+temperature(?:\?|!|$)/i,
+                    
+                    // Question patterns
+                    /(?:is\s+it\s+)?(?:raining|snowing|sunny|cloudy|hot|cold)\s+(?:in|at)\s+(.+?)(?:\?|!|$)/i,
+                    
+                    // Forecast patterns
+                    /forecast\s+(?:for|in)\s+(.+?)(?:\?|!|$)/i,
+                    /(.+?)\s+forecast(?:\?|!|$)/i,
+                    
+                    // General location mentions
+                    /(?:in|at|for)\s+(.+?)(?:\s+(?:today|tomorrow|now|currently|right now))?(?:\?|!|$)/i
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = message.match(pattern);
+                    if (match && match[1]) {
+                        let location = match[1].trim()
+                            .replace(/[.,!?]$/, '')
+                            .replace(/\s+/g, ' ');
+                        
+                        // Remove common stop words
+                        location = location.replace(/\b(today|tomorrow|now|currently|right now|please|thanks|thank you)\b/gi, '').trim();
+                        
+                        // Skip very short or very long extractions
+                        if (location.length > 2 && location.length < 100) {
+                            return location;
+                        }
+                    }
+                }
+                
+                // Check for standalone country names
+                const words = message.toLowerCase().split(/\s+/);
+                for (const word of words) {
+                    const cleanWord = word.replace(/[.,!?]/g, '');
+                    if (COUNTRY_CAPITALS[cleanWord]) {
+                        return cleanWord;
+                    }
+                }
+                
+                return null;
+            }
+
+            /**
+             * Enhanced weather request handling with better error recovery
+             */
+            async handleWeatherRequest(message) {
+                const config = WeatherService.checkAPIConfiguration();
+                if (!config.hasOpenWeatherKey) {
+                    this.addMessage("🔧 **Weather API Not Configured**\n\nTo use weather features, you need to:\n1. Get a free API key from [OpenWeatherMap](https://openweathermap.org/api)\n2. Add it to the configuration in the code\n\nSee the setup instructions for details.", 'bot');
+                    return;
+                }
+
+                const location = this.extractLocationFromMessage(message);
+                
+                if (!location) {
+                    this.addMessage("I'd be happy to help with weather information! 🌤️ Please tell me which city or country you'd like to know about.", 'bot');
+                    return;
+                }
+                
+                try {
+                    // Show loading message
+                    this.addMessage(`Looking up weather for "${location}"... 🔍`, 'bot');
+                    
+                    // Geocode location with enhanced error handling
+                    let locationInfo;
+                    try {
+                        locationInfo = await WeatherService.geocodeLocation(location);
+                    } catch (geocodeError) {
+                        console.error('Geocoding failed:', geocodeError);
+                        
+                        // Try suggesting similar locations
+                        let errorMessage = `I couldn't find "${location}". `;
+                        
+                        if (geocodeError.message.includes('API key')) {
+                            errorMessage = 'Weather service configuration issue. Please check your OpenWeather API key. 🔧';
+                        } else {
+                            errorMessage += 'Please check the spelling or try:';
+                            const suggestions = this.getSuggestions(location);
+                            if (suggestions.length > 0) {
+                                errorMessage += '\n\n' + suggestions.map(s => `• ${s}`).join('\n');
+                            } else {
+                                errorMessage += '\n• Using the full city name\n• Adding the country name\n• Trying a nearby major city';
+                            }
+                        }
+                        
+                        this.addMessage(errorMessage, 'bot');
+                        return;
+                    }
+                    
+                    // Get weather data
+                    let weatherData;
+                    try {
+                        weatherData = await WeatherService.getWeather(locationInfo.lat, locationInfo.lon);
+                    } catch (weatherError) {
+                        console.error('Weather fetch failed:', weatherError);
+                        
+                        let errorMessage = `Found ${WeatherService.formatLocationText(locationInfo)}, but couldn't get weather data. `;
+                        
+                        if (weatherError.message.includes('API key')) {
+                            errorMessage = 'Weather service configuration issue. Please check your OpenWeather API key. 🔧';
+                        } else if (weatherError.message.includes('rate limit')) {
+                            errorMessage += 'Too many requests. Please wait a moment and try again. ⏰';
+                        } else {
+                            errorMessage += 'Please try again in a moment. 🔄';
+                        }
+                        
+                        this.addMessage(errorMessage, 'bot');
+                        return;
+                    }
+                    
+                    // Store for future reference
+                    this.state.lastWeatherData = weatherData;
+                    this.state.lastLocationInfo = locationInfo;
+                    
+                    // Create and show weather card
+                    const weatherCard = WeatherService.createWeatherCard(weatherData, locationInfo);
+                    this.addWeatherCard(weatherCard);
+                    
+                    // Generate enhanced AI response with proper markdown formatting
+                    try {
+                        if (config.hasOpenRouterKey) {
+                            const weatherSummary = await this.generateWeatherSummary(weatherData, locationInfo);
+                            this.addMessage(weatherSummary, 'bot');
+                        } else {
+                            // Provide fallback summary without AI chat
+                            const fallbackSummary = this.createEnhancedFallbackSummary(weatherData, locationInfo);
+                            this.addMessage(fallbackSummary, 'bot');
+                        }
+                    } catch (summaryError) {
+                        console.error('AI summary failed:', summaryError);
+                        // Provide fallback summary with enhanced emoji formatting
+                        const fallbackSummary = this.createEnhancedFallbackSummary(weatherData, locationInfo);
+                        this.addMessage(fallbackSummary, 'bot');
+                    }
+                    
+                } catch (error) {
+                    console.error('Weather request error:', error);
+                    
+                    let errorMessage = `Sorry, I encountered an issue getting weather for "${location}". `;
+                    
+                    if (error.message.includes('API key')) {
+                        errorMessage = 'Weather service configuration issue. Please check your API keys setup. 🔧';
+                    } else if (error.message.includes('rate limit')) {
+                        errorMessage += 'Too many requests. Please wait a moment and try again. ⏰';
+                    } else {
+                        errorMessage += 'Please try again or use a different location name. 🔄';
+                    }
+                    
+                    this.addMessage(errorMessage, 'bot');
+                }
+            }
+
+            /**
+             * Get location suggestions for failed queries
+             */
+            getSuggestions(location) {
+                const suggestions = [];
+                const lowerLocation = location.toLowerCase();
+                
+                // Check for partial country matches
+                for (const [country, capital] of Object.entries(COUNTRY_CAPITALS)) {
+                    if (country.includes(lowerLocation) || lowerLocation.includes(country)) {
+                        suggestions.push(capital);
+                    }
+                }
+                
+                // Common city alternatives
+                const cityAlternatives = {
+                    'ny': 'New York',
+                    'la': 'Los Angeles',
+                    'sf': 'San Francisco',
+                    'dc': 'Washington',
+                    'miami': 'Miami',
+                    'chicago': 'Chicago',
+                    'boston': 'Boston',
+                    'seattle': 'Seattle',
+                    'vegas': 'Las Vegas'
+                };
+                
+                for (const [short, full] of Object.entries(cityAlternatives)) {
+                    if (lowerLocation.includes(short)) {
+                        suggestions.push(full);
+                    }
+                }
+                
+                return suggestions.slice(0, 3); // Limit to 3 suggestions
+            }
+
+            /**
+             * Create enhanced fallback weather summary with proper markdown and emojis
+             */
+            createEnhancedFallbackSummary(weatherData, locationInfo) {
+                const main = weatherData.main || {};
+                const weather = weatherData.weather?.[0] || {};
+                const wind = weatherData.wind || {};
+                
+                const temp = main.temp !== undefined ? Math.round(main.temp) : '--';
+                const feelsLike = main.feels_like !== undefined ? Math.round(main.feels_like) : '--';
+                const condition = weather.description || 'Unknown conditions';
+                const humidity = main.humidity || '--';
+                const windSpeed = wind.speed ? Math.round(wind.speed) : '--';
+                
+                // Get appropriate emojis
+                const tempEmoji = WeatherEmojiManager.getTemperatureEmoji(temp);
+                const conditionEmoji = WeatherEmojiManager.getConditionEmoji(condition);
+                const humidityEmoji = WeatherEmojiManager.getHumidityEmoji(humidity);
+                const windEmoji = WeatherEmojiManager.getWindEmoji(windSpeed);
+                const activityEmoji = WeatherEmojiManager.getActivityEmoji(temp, condition);
+                
+                let summary = `## ${conditionEmoji} Weather in ${WeatherService.formatLocationText(locationInfo)}\n\n`;
+                
+                summary += `Currently **${temp}°C** ${tempEmoji} with ${condition}. `;
+                
+                if (main.feels_like !== undefined && Math.abs(main.temp - main.feels_like) > 3) {
+                    summary += `Feels like **${feelsLike}°C**.\n\n`;
+                } else {
+                    summary += '\n\n';
+                }
+                
+                // Add heat warnings with proper markdown formatting
+                if (temp >= 40) {
+                    summary += `### 🚨 **EXTREME HEAT WARNING**\n`;
+                    summary += `This is **dangerously hot**! ${tempEmoji}\n`;
+                    summary += `• Stay indoors with air conditioning\n`;
+                    summary += `• Drink water constantly (every 15 min)\n`;
+                    summary += `• **Avoid all outdoor activities**\n`;
+                    summary += `• Call emergency services if you feel unwell\n\n`;
+                } else if (temp >= 35) {
+                    summary += `### ⚠️ **Very Hot Conditions**\n`;
+                    summary += `• Stay hydrated ${humidityEmoji}\n`;
+                    summary += `• Limit outdoor exposure during peak hours\n`;
+                    summary += `• Seek air-conditioned spaces\n`;
+                    summary += `• Wear light, loose clothing\n\n`;
+                } else if (temp >= 30) {
+                    summary += `### ☀️ **Hot Weather Tips**\n`;
+                    summary += `• Stay hydrated ${humidityEmoji}\n`;
+                    summary += `• Wear sunscreen and light colors\n`;
+                    summary += `• Take breaks in shade\n\n`;
+                }
+                
+                // Add weather details
+                summary += `### Weather Details:\n`;
+                summary += `${humidityEmoji} **Humidity:** ${humidity}%\n`;
+                summary += `${windEmoji} **Wind:** ${windSpeed} m/s\n`;
+                if (main.pressure) {
+                    summary += `⚖️ **Pressure:** ${main.pressure} hPa\n`;
+                }
+                
+                // Add activity suggestions
+                summary += `\n${activityEmoji} **${this.getWeatherTip(main, weather)}**`;
+                
+                return summary;
+            }
+
+            /**
+             * Handle location button request
+             */
+            async handleLocationRequest() {
+                const config = WeatherService.checkAPIConfiguration();
+                if (!config.hasOpenWeatherKey) {
+                    this.addMessage("🔧 **Weather API Not Configured**\n\nTo use location-based weather, you need to:\n1. Get a free API key from [OpenWeatherMap](https://openweathermap.org/api)\n2. Add it to the configuration in the code\n\nSee the setup instructions for details.", 'bot');
+                    return;
+                }
+
+                try {
+                    this.showTypingIndicator();
+                    this.addMessage("Getting your current location weather... 📍", 'bot');
+                    
+                    // Get user's location
+                    const coords = await WeatherService.getUserLocation();
+                    
+                    // Get weather data
+                    const weatherData = await WeatherService.getWeather(coords.lat, coords.lon);
+                    
+                    // Create location info from weather data
+                    const locationInfo = {
+                        name: weatherData.name || 'Your Location',
+                        country: weatherData.sys?.country || 'Current Location',
+                        lat: coords.lat,
+                        lon: coords.lon
+                    };
+                    
+                    // Store for future reference
+                    this.state.lastWeatherData = weatherData;
+                    this.state.lastLocationInfo = locationInfo;
+                    
+                    // Create and show weather card
+                    const weatherCard = WeatherService.createWeatherCard(weatherData, locationInfo);
+                    this.addWeatherCard(weatherCard);
+                    
+                    // Generate response
+                    try {
+                        if (config.hasOpenRouterKey) {
+                            const weatherSummary = await this.generateWeatherSummary(weatherData, locationInfo);
+                            this.addMessage(weatherSummary, 'bot');
+                        } else {
+                            const fallbackSummary = this.createEnhancedFallbackSummary(weatherData, locationInfo);
+                            this.addMessage(fallbackSummary, 'bot');
+                        }
+                    } catch (summaryError) {
+                        const fallbackSummary = this.createEnhancedFallbackSummary(weatherData, locationInfo);
+                        this.addMessage(fallbackSummary, 'bot');
+                    }
+                    
+                } catch (error) {
+                    console.error('Location request error:', error);
+                    
+                    let errorMessage = "I couldn't access your location. 📍 ";
+                    
+                    if (error.message.includes('denied')) {
+                        errorMessage += "Please allow location access in your browser or type a city name.";
+                    } else if (error.message.includes('unavailable')) {
+                        errorMessage += "Location services are unavailable. Please type a city name.";
+                    } else {
+                        errorMessage += "Please type a city name instead.";
+                    }
+                    
+                    this.addMessage(errorMessage, 'bot');
+                } finally {
+                    this.hideTypingIndicator();
+                }
+            }
+
+            /**
+             * Generate AI weather summary with enhanced markdown and heat warnings
+             */
+            async generateWeatherSummary(weatherData, locationInfo) {
+                const config = WeatherService.checkAPIConfiguration();
+                if (!config.hasOpenRouterKey) {
+                    throw new Error('OpenRouter API key not configured');
+                }
+
+                const main = weatherData.main || {};
+                const weather = weatherData.weather?.[0] || {};
+                const wind = weatherData.wind || {};
+                
+                const condition = WEATHER_CONDITIONS[weather.icon] || { name: weather.description || 'Unknown' };
+                const temp = Math.round(main.temp || 0);
+                const heatLevel = WeatherService.determineHeatLevel(temp);
+                
+                // Get emojis for enhanced formatting
+                const tempEmoji = WeatherEmojiManager.getTemperatureEmoji(temp);
+                const conditionEmoji = WeatherEmojiManager.getConditionEmoji(condition.name);
+                
+                let weatherPrompt = `You are Nimo, a friendly weather assistant. Provide a brief, conversational weather summary using markdown formatting and appropriate emojis.
+
+Location: ${WeatherService.formatLocationText(locationInfo)}
+Temperature: ${temp}°C (feels like ${Math.round(main.feels_like || main.temp || 0)}°C) ${tempEmoji}
+Condition: ${condition.name} ${conditionEmoji}
+Humidity: ${main.humidity || 'N/A'}%
+Wind Speed: ${wind.speed ? Math.round(wind.speed) : 'N/A'} m/s
+Pressure: ${main.pressure || 'N/A'} hPa`;
+
+                // Add heat warning context
+                if (heatLevel.warning) {
+                    weatherPrompt += `\n\nIMPORTANT: This is ${heatLevel.warning} weather (${temp}°C). You MUST include appropriate health and safety warnings about heat exposure, hydration, and avoiding outdoor activities during peak hours. Use markdown formatting with headers and bullet points for safety tips.`;
+                } else if (temp >= 30) {
+                    weatherPrompt += `\n\nNote: Temperature is quite hot at ${temp}°C. Mention staying hydrated and heat precautions using proper markdown formatting.`;
+                }
+
+                weatherPrompt += `\n\nFormat your response using markdown:
+- Use ## for main weather heading with emoji
+- Use ### for subsections like "Hot Weather Tips" or "Weather Details"
+- Use **bold** for important information like temperatures
+- Use bullet points for tips and recommendations
+- Include relevant weather emojis throughout
+- Keep it conversational, helpful, and under 150 words
+- End with a practical activity suggestion using an appropriate emoji`;
+
+                try {
+                    return await this.callChatAPI(weatherPrompt);
+                } catch (error) {
+                    console.error('AI summary error:', error);
+                    throw error; // Let the caller handle the fallback
+                }
+            }
+
+            /**
+             * Get weather tip based on conditions with enhanced heat warnings
+             */
+            getWeatherTip(main, weather) {
+                const temp = main.temp || 0;
+                
+                if (temp >= 40) return "🚨 DANGER: Extreme heat! Stay indoors with AC, drink water constantly, and call emergency services if you feel unwell.";
+                if (temp >= 35) return "⚠️ Very hot! Avoid outdoor activities, stay in shade/AC, and drink water every 15 minutes.";
+                if (temp > 30) return "🔥 Hot weather - stay hydrated, wear light colors, and avoid the midday sun!";
+                if (temp < 0) return "🧊 Bundle up - it's freezing out there!";
+                if (main.humidity > 80) return "💧 High humidity - it might feel quite muggy.";
+                if (weather.main && weather.main.toLowerCase().includes('rain')) return "☔ Don't forget your umbrella!";
+                if (weather.main && weather.main.toLowerCase().includes('snow')) return "❄️ Perfect weather for a snowman!";
+                if (temp > 20 && temp < 25) return "🌤️ Perfect weather for outdoor activities!";
+                return "Have a wonderful day! 😊";
+            }
+
+            /**
+             * Enhanced Chat API call with better error handling
+             */
+            async callChatAPI(message) {
+                const config = WeatherService.checkAPIConfiguration();
+                if (!config.hasOpenRouterKey) {
+                    throw new Error('OpenRouter API key is not configured. Please add your API key to use chat features.');
+                }
+
+                try {
+                    const messages = [
+                        {
+                            role: 'system',
+                            content: 'You are Nimo, a friendly weather AI assistant. You help users with weather information and general chat. Always format your responses in markdown with appropriate headers, bold text, and weather emojis. When discussing high temperatures (30°C+), always include health and safety tips with proper markdown formatting. Keep responses conversational, brief, short, helpful, and concise.'
+                        },
+                        ...this.state.conversationMemory.slice(-6), // Keep last 3 exchanges
+                        {
+                            role: 'user',
+                            content: message
+                        }
+                    ];
+                    
+                    const response = await fetch(WEATHER_CONFIG.OPENROUTER_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${WEATHER_CONFIG.OPENROUTER_API_KEY}`,
+                            'Content-Type': 'application/json',
+                            'HTTP-Referer': window.location.origin,
+                            'X-Title': 'Nimo Weather Assistant'
+                        },
+                        body: JSON.stringify({
+                            model: WEATHER_CONFIG.MODEL,
+                            messages: messages,
+                            max_tokens: 400,
+                            temperature: 0.7,
+                            top_p: 0.9,
+                            stream: false
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            throw new Error('Invalid OpenRouter API key. Please check your API key configuration.');
+                        } else if (response.status === 429) {
+                            throw new Error('OpenRouter API rate limit exceeded. Please try again later.');
+                        } else if (response.status === 402) {
+                            throw new Error('OpenRouter API payment required. Please check your account.');
+                        }
+                        throw new Error(`Chat API failed: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.choices?.[0]?.message?.content) {
+                        throw new Error('Invalid response from chat API');
+                    }
+                    
+                    const botResponse = data.choices[0].message.content;
+                    
+                    // Add to memory
+                    this.state.conversationMemory.push(
+                        { role: 'user', content: message },
+                        { role: 'assistant', content: botResponse }
+                    );
+                    
+                    // Trim memory if too long
+                    while (this.state.conversationMemory.length > this.state.maxMemorySize) {
+                        this.state.conversationMemory.shift();
+                    }
+                    
+                    return botResponse;
+                } catch (error) {
+                    console.error('Chat API error:', error);
+                    throw error;
+                }
+            }
+
+            /**
+             * Add message to chat display
+             */
+            addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+                
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = `message-avatar ${sender === 'bot' ? 'bot-avatar' : 'user-message-avatar'}`;
+                
+                if (sender === 'bot') {
+                    const avatarImg = document.createElement('img');
+                    avatarImg.src = 'https://cdn-icons-png.flaticon.com/256/6420/6420958.png';
+                    avatarImg.alt = 'Nimo';
+                    avatarImg.onerror = () => {
+                        avatarDiv.innerHTML = '🌤️';
+                        avatarDiv.style.fontSize = '16px';
+                    };
+                    avatarDiv.appendChild(avatarImg);
+                } else {
+                    avatarDiv.innerHTML = 'U';
+                    avatarDiv.style.fontSize = '14px';
+                    avatarDiv.style.fontWeight = 'bold';
+                    avatarDiv.style.color = 'white';
+                }
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                if (sender === 'bot') {
+                    contentDiv.innerHTML = MarkdownParser.parse(text);
+                } else {
+                    contentDiv.textContent = text;
+                }
+                
+                messageDiv.appendChild(avatarDiv);
+                messageDiv.appendChild(contentDiv);
+                
+                this.elements.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            /**
+             * Add weather card to chat
+             */
+            addWeatherCard(cardHTML) {
+                const cardContainer = document.createElement('div');
+                cardContainer.className = 'message bot-message';
+                
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'message-avatar bot-avatar';
+                const avatarImg = document.createElement('img');
+                avatarImg.src = 'https://cdn-icons-png.flaticon.com/256/6420/6420958.png';
+                avatarImg.alt = 'Nimo';
+                avatarImg.onerror = () => {
+                    avatarDiv.innerHTML = '🌤️';
+                    avatarDiv.style.fontSize = '16px';
+                };
+                avatarDiv.appendChild(avatarImg);
+                
+                const cardDiv = document.createElement('div');
+                cardDiv.innerHTML = cardHTML;
+                
+                cardContainer.appendChild(avatarDiv);
+                cardContainer.appendChild(cardDiv);
+                
+                this.elements.messagesContainer.appendChild(cardContainer);
+                this.scrollToBottom();
+            }
+
+            /**
+             * Show typing indicator
+             */
+            showTypingIndicator() {
+                this.hideTypingIndicator();
+                this.state.isTyping = true;
+                
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator-message';
+                typingDiv.id = 'typing-indicator';
+                typingDiv.setAttribute('role', 'status');
+                typingDiv.setAttribute('aria-label', 'Nimo is typing');
+
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'message-avatar bot-avatar';
+                const avatarImg = document.createElement('img');
+                avatarImg.src = 'https://cdn-icons-png.flaticon.com/256/6420/6420958.png';
+                avatarImg.alt = 'Nimo';
+                avatarImg.onerror = () => {
+                    avatarDiv.innerHTML = '🌤️';
+                    avatarDiv.style.fontSize = '16px';
+                };
+                avatarDiv.appendChild(avatarImg);
+
+                const indicatorDiv = document.createElement('div');
+                indicatorDiv.className = 'typing-indicator';
+                indicatorDiv.innerHTML = `
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+
+                typingDiv.appendChild(avatarDiv);
+                typingDiv.appendChild(indicatorDiv);
+                this.elements.messagesContainer.appendChild(typingDiv);
+                this.scrollToBottom();
+            }
+
+            /**
+             * Hide typing indicator
+             */
+            hideTypingIndicator() {
+                const indicator = document.getElementById('typing-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+                this.state.isTyping = false;
+            }
+
+            /**
+             * Show initial message and quick replies
+             */
+            showInitialMessage() {
+                const config = WeatherService.checkAPIConfiguration();
+                let initialMessage = "👋Hello! I'm Nimo, your Weather Assistant 🌤️. I provide real-time forecasts worldwide and share alerts for extreme heat.";
+                
+                if (config.isFullyConfigured) {
+                    initialMessage += " Ask about any city, or select Use my location for local updates";
+                } else if (config.hasOpenWeatherKey) {
+                    initialMessage += " Weather features are ready! Ask about any city, or select Use my location for local updates. (Chat features require OpenRouter API key)";
+                } else {
+                    initialMessage += " Please configure your API keys to use weather features. See the setup instructions.";
+                }
+                
+                this.addMessage(initialMessage, 'bot');
+                
+                if (config.hasOpenWeatherKey) {
+                    this.showInitialQuickReplies();
+                }
+            }
+
+            /**
+             * Show initial quick replies (only shown once)
+             */
+            showInitialQuickReplies() {
+                // Only show if quick replies haven't been disabled
+                if (!this.state.quickRepliesDisabled) {
+                    const replies = [
+                        { text: "📍 Use my location", message: "location", isLocation: true },
+                        { text: "🏜️ Weather in Dubai", message: "What's the weather in Dubai?" },
+                        { text: "🌵 Weather in Riyadh", message: "Weather in Riyadh" },
+                        { text: "🏙️ Weather in London", message: "Weather in London" }
+                    ];
+                    this.showQuickReplies(replies);
+                }
+            }
+
+            /**
+             * Show quick reply buttons (UPDATED to never show after first interaction)
+             */
+            showQuickReplies(replies) {
+                // Never show quick replies after first interaction
+                if (this.state.quickRepliesDisabled) {
+                    return;
+                }
+                
+                // Only show initial quick replies before first interaction
+                if (this.state.isFirstInteraction) {
+                    this.clearQuickReplies();
+                    
+                    replies.forEach(reply => {
+                        const button = document.createElement('button');
+                        button.className = 'quick-reply-btn';
+                        button.textContent = reply.text;
+                        button.dataset.message = reply.message || reply.text;
+                        
+                        if (reply.isLocation) {
+                            button.classList.add('location-style');
+                        } else if (reply.isClose || reply.text.toLowerCase().includes('close')) {
+                            button.classList.add('close-style');
+                        }
+                        
+                        this.elements.quickRepliesContainer.appendChild(button);
+                    });
+                    
+                    this.scrollToBottom();
+                }
+            }
+
+            /**
+             * Clear quick reply buttons (UPDATED to respect disabled state)
+             */
+            clearQuickReplies() {
+                if (!this.elements.quickRepliesContainer.classList.contains('hidden')) {
+                    this.elements.quickRepliesContainer.innerHTML = '';
+                }
+            }
+
+            /**
+             * Update connection status
+             */
+            updateConnectionStatus(status) {
+                const { statusDot, statusText, statusMessage } = this.elements;
+                
+                switch (status) {
+                    case 'online':
+                        statusDot.className = 'status-dot';
+                        statusText.textContent = 'Online';
+                        statusMessage.textContent = 'Online';
+                        break;
+                    case 'failed':
+                        statusDot.className = 'status-dot failed';
+                        statusText.textContent = 'Connection Failed';
+                        statusMessage.textContent = 'Failed';
+                        break;
+                    case 'connecting':
+                        statusDot.className = 'status-dot';
+                        statusText.textContent = 'Connecting';
+                        statusMessage.textContent = 'Connecting...';
+                        break;
+                }
+            }
+
+            /**
+             * Enhanced error handling with user-friendly messages
+             */
+            handleError(error) {
+                this.updateConnectionStatus('failed');
+                console.error("Nimo Error:", error);
+                
+                let errorMessage;
+                const errorString = error.message || '';
+                
+                if (errorString.includes('not configured') || errorString.includes('API key')) {
+                    errorMessage = "Service configuration issue. Please check the API keys setup instructions. 🔧";
+                } else if (errorString.includes('not found')) {
+                    errorMessage = "I couldn't find that location. Please check the spelling or try a different city name. 📍";
+                } else if (errorString.includes('rate limit')) {
+                    errorMessage = "Too many requests. Please wait a moment and try again. ⏰";
+                } else if (errorString.includes('Failed to fetch') || errorString.includes('Network')) {
+                    errorMessage = "Network error. Please check your internet connection and try again. 🌐";
+                } else if (errorString.includes('payment required')) {
+                    errorMessage = "API service payment required. Please check your account. 💳";
+                } else {
+                    errorMessage = "Something went wrong. Please try again in a moment. 🔄";
+                }
+                
+                this.showErrorMessage(errorMessage);
+                
+                // Reset status after delay
+                setTimeout(() => {
+                    this.updateConnectionStatus('online');
+                }, 5000);
+            }
+
+            /**
+             * Show error message in chat
+             */
+            showErrorMessage(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.setAttribute('role', 'alert');
+                errorDiv.innerHTML = `
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    <span>${message}</span>
+                `;
+                
+                this.elements.messagesContainer.appendChild(errorDiv);
+                this.scrollToBottom();
+                
+                // Auto-remove after 10 seconds
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.remove();
+                    }
+                }, 10000);
+            }
+
+            /**
+             * Scroll messages to bottom
+             */
+            scrollToBottom() {
+                requestAnimationFrame(() => {
+                    this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
+                });
+            }
+        }
+
+        // Initialize Nimo when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Create Nimo instance
+            window.nimo = new NimoWeatherBot();
+        });
+    </script>
+</body>
+</html>
